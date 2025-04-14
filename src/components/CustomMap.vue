@@ -94,7 +94,7 @@ export default {
 
       const icons = {
         Trash: new URL('@/assets/trash.png', import.meta.url).href,
-        Recycle: new URL('@/assets/recycling-center.png', import.meta.url).href,
+        Recycle: new URL('@/assets/recycle.png', import.meta.url).href,
         Combustible: new URL('@/assets/combustible.png', import.meta.url).href,
       };
 
