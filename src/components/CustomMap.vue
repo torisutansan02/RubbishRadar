@@ -66,24 +66,43 @@ export default {
 
       const { AdvancedMarkerElement } = await google.maps.importLibrary("marker");
 
-      map = new google.maps.Map(this.$refs.mapArea, {
-        center: { lat: 41, lng: -87 },
-        zoom: 16,
-        mapId: "c843d678fb7a23f3",
-      });
+      const fallbackCenter = { lat: 41, lng: -87 }; // in case user denies permission
 
+      // Try to get user's location before initializing map
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          const userLatLng = {
+            lat: pos.coords.latitude,
+            lng: pos.coords.longitude,
+          };
+
+          map = new google.maps.Map(this.$refs.mapArea, {
+            center: userLatLng,
+            zoom: 16,
+            mapId: "c843d678fb7a23f3",
+          });
+
+          this.finishMapSetup(AdvancedMarkerElement);
+        },
+        (error) => {
+          console.warn("Could not get user location, using fallback:", error);
+
+          map = new google.maps.Map(this.$refs.mapArea, {
+            center: fallbackCenter,
+            zoom: 16,
+            mapId: "c843d678fb7a23f3",
+          });
+
+          this.finishMapSetup(AdvancedMarkerElement);
+        },
+        { timeout: 5000 }
+      );
+    },
+
+    async finishMapSetup(AdvancedMarkerElement) {
       infoWindow = new google.maps.InfoWindow({ content: "" });
 
       map.addListener("click", (e) => this.handleMapClick(e.latLng));
-
-      if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition((pos) => {
-          map.setCenter({
-            lat: pos.coords.latitude,
-            lng: pos.coords.longitude,
-          });
-        });
-      }
 
       await this.getLocations();
       this.renderMarkers();
