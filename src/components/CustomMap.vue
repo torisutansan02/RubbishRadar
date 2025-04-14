@@ -3,6 +3,9 @@
 </template>
 
 <script>
+import trashIcon from "@/assets/trash.png"
+import recycleIcon from "@/assets/recycling-center.png"
+import combustibleIcon from "@/assets/combustible.png"
 import { Loader } from "@googlemaps/js-api-loader";
 import { auth, db } from "../firebaseResources";
 import {
@@ -93,9 +96,9 @@ export default {
       const { AdvancedMarkerElement } = await google.maps.importLibrary("marker");
 
       const icons = {
-        Trash: "src/assets/trash.png",
-        Recycle: "src/assets/recycling-center.png",
-        Combustible: "src/assets/combustible.png",
+        Trash: trashIcon,
+        Recycle: recycleIcon,
+        Combustible: combustibleIcon,
       };
 
       for (const loc of this.locArray) {

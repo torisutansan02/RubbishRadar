@@ -81,18 +81,20 @@
   <h2 class="h2">Who Am I?</h2>
 
   <table class="table">
-    <tr class="tr">
-      <td>
-        <a
-          href="https://www.linkedin.com/in/torisutan/"
-          target="_blank"
-          class="abouta"
-        >
-          <img id="pfp" src="../images/tristan.jpg" alt="tristan_pic" />
-          Tristan Cai
-        </a>
-      </td>
-    </tr>
+    <tbody>
+      <tr class="tr">
+        <td>
+          <a
+            href="https://www.linkedin.com/in/torisutan/"
+            target="_blank"
+            class="abouta"
+          >
+            <img id="pfp" src="../images/tristan.jpg" alt="tristan_pic" />
+            Tristan Cai
+          </a>
+        </td>
+      </tr>
+    </tbody>
   </table>
 
   <img class="logo" src="../images/new_logo.png" alt="Rubbish_Radar_Logo_pic" />
