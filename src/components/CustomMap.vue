@@ -18,7 +18,6 @@ import {
 let map = null;
 let infoWindow = null;
 let markerMap = new Map();
-let directionsRenderer = null;
 
 export default {
   data() {
@@ -26,6 +25,9 @@ export default {
       locArray: [],
       userLoggedIn: false,
       mapInitialized: false,
+      directionsRenderer: null,
+      directionsService: null,
+      geoWatchId: null,
     };
   },
   async mounted() {
@@ -41,9 +43,7 @@ export default {
     }
   },
   beforeUnmount() {
-    if (this.liveNavigationInterval) {
-      clearInterval(this.liveNavigationInterval);
-    }
+    if (this.geoWatchId) navigator.geolocation.clearWatch(this.geoWatchId);
   },
   methods: {
     async loadGoogleMaps() {
@@ -181,61 +181,62 @@ export default {
     async navigateToMarker(destinationLat, destinationLng) {
       const { DirectionsService, DirectionsRenderer } = await google.maps.importLibrary("routes");
 
-      if (directionsRenderer) {
-        directionsRenderer.setMap(null);
+      // 🧹 Clear previous directions and geolocation watch
+      if (this.directionsRenderer) {
+        this.directionsRenderer.setMap(null);
+        this.directionsRenderer = null;
+      }
+      if (this.geoWatchId) {
+        navigator.geolocation.clearWatch(this.geoWatchId);
+        this.geoWatchId = null;
       }
 
+      // ✅ Initialize new renderer and service
       const directionsService = new google.maps.DirectionsService();
-      directionsRenderer = new google.maps.DirectionsRenderer({
+      const directionsRenderer = new google.maps.DirectionsRenderer({
         suppressMarkers: false,
         preserveViewport: true,
       });
-
       directionsRenderer.setMap(map);
 
-      // Save reference for interval re-routing
-      this.liveNavigationInterval && clearInterval(this.liveNavigationInterval);
+      this.directionsRenderer = directionsRenderer;
+      this.directionsService = directionsService;
 
-      const updateRoute = () => {
-        navigator.geolocation.getCurrentPosition(
-          (position) => {
-            const origin = {
-              lat: position.coords.latitude,
-              lng: position.coords.longitude,
-            };
-            const destination = {
-              lat: destinationLat,
-              lng: destinationLng,
-            };
+      const updateRoute = (position) => {
+        const origin = {
+          lat: position.coords.latitude,
+          lng: position.coords.longitude,
+        };
+        const destination = { lat: destinationLat, lng: destinationLng };
 
-            directionsService.route(
-              {
-                origin,
-                destination,
-                travelMode: google.maps.TravelMode.WALKING,
-              },
-              (result, status) => {
-                if (status === "OK") {
-                  directionsRenderer.setDirections(result);
-                } else {
-                  console.error("Directions request failed:", status);
-                }
-              }
-            );
+        directionsService.route(
+          {
+            origin,
+            destination,
+            travelMode: google.maps.TravelMode.WALKING,
           },
-          (error) => {
-            console.error("Geolocation error:", error);
+          (result, status) => {
+            if (status === "OK") {
+              directionsRenderer.setDirections(result);
+            } else {
+              console.error("Directions request failed:", status);
+            }
           }
         );
       };
 
-      // Call it once immediately
-      updateRoute();
+      // 📍 Get route immediately
+      navigator.geolocation.getCurrentPosition(updateRoute, (err) =>
+        console.error("Initial geolocation failed", err)
+      );
 
-      // Then call it every 5 seconds
-      this.liveNavigationInterval = setInterval(updateRoute, 5000);
+      // 🔁 Update live route
+      this.geoWatchId = navigator.geolocation.watchPosition(
+        updateRoute,
+        (err) => console.error("Geolocation watch error", err),
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 5000 }
+      );
     },
-
 
     async handleMapClick(latLng) {
       const lat = latLng.lat();
