@@ -18,6 +18,7 @@ import {
 let map = null;
 let infoWindow = null;
 let markerMap = new Map();
+let directionsRenderer = null;
 
 export default {
   data() {
@@ -39,12 +40,17 @@ export default {
       this.getLocations().then(() => this.renderMarkers());
     }
   },
+  beforeUnmount() {
+    if (this.liveNavigationInterval) {
+      clearInterval(this.liveNavigationInterval);
+    }
+  },
   methods: {
     async loadGoogleMaps() {
       const loader = new Loader({
         apiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY,
         version: "weekly",
-        libraries: ["marker"],
+        libraries: ["places", "routes"],
       });
 
       try {
@@ -137,6 +143,7 @@ export default {
             <br/><br/>
             <button id="upvoteButton" class="trashButtons">Upvote</button>
             <button id="downvoteButton" class="trashButtons">Downvote</button>
+            <button id="navigateBtn" class="trashButtons">Navigate</button>
           ` : ""}
         </div>
       `);
@@ -146,8 +153,70 @@ export default {
       google.maps.event.addListenerOnce(infoWindow, "domready", () => {
         document.getElementById("upvoteButton")?.addEventListener("click", () => this.upvote(id));
         document.getElementById("downvoteButton")?.addEventListener("click", () => this.downvote(id));
+        document.getElementById("navigateBtn")?.addEventListener("click", () =>
+          this.navigateToMarker(latitude, longitude)
+        );
       });
     },
+
+    async navigateToMarker(destinationLat, destinationLng) {
+      const { DirectionsService, DirectionsRenderer } = await google.maps.importLibrary("routes");
+
+      if (directionsRenderer) {
+        directionsRenderer.setMap(null);
+      }
+
+      const directionsService = new google.maps.DirectionsService();
+      directionsRenderer = new google.maps.DirectionsRenderer({
+        suppressMarkers: false,
+        preserveViewport: true,
+      });
+
+      directionsRenderer.setMap(map);
+
+      // Save reference for interval re-routing
+      this.liveNavigationInterval && clearInterval(this.liveNavigationInterval);
+
+      const updateRoute = () => {
+        navigator.geolocation.getCurrentPosition(
+          (position) => {
+            const origin = {
+              lat: position.coords.latitude,
+              lng: position.coords.longitude,
+            };
+            const destination = {
+              lat: destinationLat,
+              lng: destinationLng,
+            };
+
+            directionsService.route(
+              {
+                origin,
+                destination,
+                travelMode: google.maps.TravelMode.WALKING,
+              },
+              (result, status) => {
+                if (status === "OK") {
+                  directionsRenderer.setDirections(result);
+                } else {
+                  console.error("Directions request failed:", status);
+                }
+              }
+            );
+          },
+          (error) => {
+            console.error("Geolocation error:", error);
+          }
+        );
+      };
+
+      // Call it once immediately
+      updateRoute();
+
+      // Then call it every 5 seconds
+      this.liveNavigationInterval = setInterval(updateRoute, 5000);
+    },
+
 
     async handleMapClick(latLng) {
       const lat = latLng.lat();
